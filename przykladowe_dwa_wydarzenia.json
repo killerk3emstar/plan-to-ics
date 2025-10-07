@@ -1,0 +1,44 @@
+{
+    "-OVUVl7wolk-oZMr3rXL": {
+        "duration": "01:30",
+        "end": "2025-10-06T10:45:00",
+        "endDate": "2026-01-26",
+        "eventType": "Metodyka studiowania",
+        "faculty": "IwIKs1",
+        "group": "W",
+        "instructor": "dr M. Piekarski",
+        "interval": 2,
+        "room": "A1",
+        "rrule": {
+            "dtstart": "2025-10-06T09:15:00",
+            "freq": "weekly",
+            "interval": 2,
+            "until": "2026-01-26T01:00:00"
+        },
+        "start": "2025-10-06T09:15:00",
+        "startDate": "2025-10-06",
+        "startTime": "09:15",
+        "title": "Metodyka studiowania, W, dr M. Piekarski, s. A1, IwIKs1"
+    },
+    "-OVZjfBc6WkJaVAkun2A": {
+        "duration": "02:15",
+        "end": "2026-01-20T20:15:00",
+        "endDate": "2026-01-21",
+        "eventType": "Systemy operacyjne",
+        "faculty": "IwIKs3",
+        "group": "P3",
+        "instructor": "dr inż. K. Suchenia",
+        "interval": 1,
+        "room": "101C",
+        "rrule": {
+            "dtstart": "2026-01-20T18:00:00",
+            "freq": "weekly",
+            "interval": 1,
+            "until": "2026-01-21T01:00:00"
+        },
+        "start": "2026-01-20T18:00:00",
+        "startDate": "2026-01-20",
+        "startTime": "18:00",
+        "title": "Systemy operacyjne, P3, dr inż. K. Suchenia, s. 101C, IwIKs3"
+    }
+}

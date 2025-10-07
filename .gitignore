@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+
+# Outputs
+filtered_wydarzenia.json
+plan.ics
+
+# Editors/OS
+.DS_Store
+.idea/
+.vscode/
+
