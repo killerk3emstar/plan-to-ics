@@ -38,6 +38,11 @@ def parse_args() -> argparse.Namespace:
         default="Europe/Warsaw",
         help="Timezone for naive input datetimes (default: Europe/Warsaw)",
     )
+    parser.add_argument(
+        "--use-tzid",
+        action="store_true",
+        help="Use TZID in DTSTART/DTEND instead of UTC (better for DST-aware calendars)",
+    )
     return parser.parse_args()
 
 
@@ -52,6 +57,17 @@ def ensure_dict(data):
     if isinstance(data, list):
         return {str(i): v for i, v in enumerate(data)}
     raise ValueError("Unsupported JSON structure; expected object or array")
+
+
+def parse_iso_with_tzid(dt_str: str, tz: ZoneInfo, tzid: str) -> tuple[str, str]:
+    """Returns (DTSTART value, TZID if needed) or (UTC value, None)"""
+    dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=tz)
+    
+    # For calendar apps like Apple Calendar: use TZID form instead of UTC
+    local_dt_str = dt.strftime("%Y%m%dT%H%M%S")
+    return local_dt_str, tzid
 
 
 def parse_iso_as_utc_z(dt_str: str, naive_tz: ZoneInfo) -> str:
@@ -106,7 +122,29 @@ def escape_text(value: str) -> str:
     )
 
 
-def build_event(uid_namespace: str, key: str, event: dict, naive_tz: ZoneInfo) -> List[str]:
+def build_vtimezone(tzid: str, tz: ZoneInfo) -> List[str]:
+    """Generate minimal VTIMEZONE block for Europe/Warsaw"""
+    lines = [
+        "BEGIN:VTIMEZONE",
+        f"TZID:{tzid}",
+        "BEGIN:STANDARD",
+        "DTSTART:20230326T030000",
+        "TZOFFSETFROM:+0100",
+        "TZOFFSETTO:+0100",
+        "TZNAME:CET",
+        "END:STANDARD",
+        "BEGIN:DAYLIGHT",
+        "DTSTART:20230326T020000",
+        "TZOFFSETFROM:+0100",
+        "TZOFFSETTO:+0200",
+        "TZNAME:CEST",
+        "END:DAYLIGHT",
+        "END:VTIMEZONE",
+    ]
+    return lines
+
+
+def build_event(uid_namespace: str, key: str, event: dict, naive_tz: ZoneInfo, use_tzid: bool = False, tzid: str = "") -> List[str]:
     lines: List[str] = ["BEGIN:VEVENT"]
 
     # UID should be stable across regenerations if input key persists
@@ -117,13 +155,21 @@ def build_event(uid_namespace: str, key: str, event: dict, naive_tz: ZoneInfo) -
     dtstamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     lines.append(f"DTSTAMP:{dtstamp}")
 
-    # DTSTART/DTEND as UTC
+    # DTSTART/DTEND
     start = event.get("start")
     end = event.get("end")
     if start:
-        lines.append(f"DTSTART:{parse_iso_as_utc_z(start, naive_tz)}")
+        if use_tzid:
+            start_val, start_tzid = parse_iso_with_tzid(start, naive_tz, tzid)
+            lines.append(f"DTSTART;TZID={start_tzid}:{start_val}")
+        else:
+            lines.append(f"DTSTART:{parse_iso_as_utc_z(start, naive_tz)}")
     if end:
-        lines.append(f"DTEND:{parse_iso_as_utc_z(end, naive_tz)}")
+        if use_tzid:
+            end_val, end_tzid = parse_iso_with_tzid(end, naive_tz, tzid)
+            lines.append(f"DTEND;TZID={end_tzid}:{end_val}")
+        else:
+            lines.append(f"DTEND:{parse_iso_as_utc_z(end, naive_tz)}")
 
     # SUMMARY, LOCATION, DESCRIPTION
     title = event.get("eventType") or event.get("title") or "Zajecia"
@@ -155,7 +201,7 @@ def build_event(uid_namespace: str, key: str, event: dict, naive_tz: ZoneInfo) -
     return lines
 
 
-def write_ics(path: str, calendar_name: str, events: List[List[str]]) -> None:
+def write_ics(path: str, calendar_name: str, events: List[List[str]], vtimezone: Optional[List[str]] = None) -> None:
     lines: List[str] = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
@@ -165,6 +211,8 @@ def write_ics(path: str, calendar_name: str, events: List[List[str]]) -> None:
         f"X-WR-CALNAME:{escape_text(calendar_name)}",
         f"NAME:{escape_text(calendar_name)}",
     ]
+    if vtimezone:
+        lines.extend(vtimezone)
     for ev in events:
         lines.extend(ev)
     lines.append("END:VCALENDAR")
@@ -197,13 +245,18 @@ def main() -> int:
         print(f"Invalid timezone '{args.tz}', falling back to UTC", file=sys.stderr)
         naive_tz = ZoneInfo("UTC")
 
+    # Build VTIMEZONE if using TZID
+    vtimezone: Optional[List[str]] = None
+    if args.use_tzid:
+        vtimezone = build_vtimezone(args.tz, naive_tz)
+
     events: List[List[str]] = []
     for key, ev in items.items():
         if not isinstance(ev, dict):
             continue
-        events.append(build_event(uid_namespace, key, ev, naive_tz))
+        events.append(build_event(uid_namespace, key, ev, naive_tz, args.use_tzid, args.tz))
 
-    write_ics(args.output, args.calendar_name, events)
+    write_ics(args.output, args.calendar_name, events, vtimezone)
 
     print(f"Wrote {len(events)} events to {args.output}")
     return 0

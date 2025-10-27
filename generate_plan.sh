@@ -68,7 +68,8 @@ echo "[2/2] Generating ICS -> $OUTPUT_ICS"
 python3 "$SCRIPT_DIR/json_to_ics.py" \
   --input "$FILTERED_JSON" \
   --output "$OUTPUT_ICS" \
-  --calendar-name "$CAL_NAME"
+  --calendar-name "$CAL_NAME" \
+  --use-tzid
 
 echo "Done. Calendar: $OUTPUT_ICS"
 
