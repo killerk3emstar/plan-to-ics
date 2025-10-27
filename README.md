@@ -31,7 +31,8 @@ Po uruchomieniu otrzymasz `plan.ics` gotowy do importu w Apple Calendar.
   - obsługa `group` rozdzielonych przez `/` lub `,` (np. `"P1/P2/P3/P4"`),
   - zawsze zachowuje wykłady `W`.
 - `json_to_ics.py` – konwertuje przefiltrowany JSON do `.ics`:
-  - `DTSTART/DTEND` w UTC (`...Z`),
+  - `DTSTART/DTEND` z `TZID=Europe/Warsaw` (zamiast UTC) dla poprawnej obsługi DST,
+  - blok `VTIMEZONE` definiujący zmianę czasu (CET ↔ CEST),
   - `RRULE` (FREQ, INTERVAL, UNTIL),
   - stabilne `UID`, `PRODID`, `X-WR-CALNAME`.
 
@@ -73,10 +74,18 @@ python3 json_to_ics.py \
   --tz Europe/Warsaw
 ```
 
+### Obsługa czasu zimowego/letniego (DST)
+Kalendarz używa formatu `TZID=Europe/Warsaw` dla `DTSTART/DTEND` oraz bloku `VTIMEZONE` z regułami CET↔CEST. Dzięki temu Apple Calendar poprawnie obsługuje zmianę czasu:
+- Koniec marca: `CET` → `CEST` (+2h)
+- Koniec października: `CEST` → `CET` (+1h)
+
+Eventy po zmianie czasu (np. po 27/10) zachowają poprawne godziny lokalne bez potrzeby ręcznego korygowania.
+
 ### Rozwiązywanie problemów
 - Brak eventów po filtrze: sprawdź `faculty` oraz literówki w `--lk/--l/--p` (np. `Lk2` vs `LK2`).
 - Problemy sieciowe z `--url`: sprawdź połączenie/DNS lub użyj `--input`.
 - Inna strefa: `--tz <Region/Miasto>` przy generowaniu `.ics`.
+- Chcesz wyłączyć TZID (użyć UTC)? Zignoruj `--use-tzid` w `json_to_ics.py` (domyślnie wrapper używa TZID).
 
 ### Licencja
 MIT
